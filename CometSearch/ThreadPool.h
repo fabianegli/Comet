@@ -17,14 +17,12 @@
 #define _THREAD_POOL_H_
 #include <iostream>
 
-//#include "Threading.h"
-//#include <mutex>
-//#include <condition_variable>
-#include <deque>
-#include <vector>
-#include <functional>
 #include <chrono>
+#include <deque>
+#include <functional>
+#include <iostream>
 #include <thread>
+#include <vector>
 
 #ifdef TPP_WIN32THREADS
 #define _WIN32
@@ -284,10 +282,11 @@ public:
    {
      //return !jobs_.empty() || (running_count_ > 0);
      bool rtn;
-      this->LOCK(&lock_);
+     this->LOCK(&lock_);
+     this->LOCK(&countlock_);
       rtn = !jobs_.empty() || running_count_;
+      this->UNLOCK(&countlock_);
       this->UNLOCK(&lock_);
-
       return rtn;
    }
 
@@ -394,7 +393,7 @@ inline void* threadStart(void* ptr)
          //Threading::ThreadSleep(100);
          if  (did_job)
          {
-            tp->running_count_ --;
+            tp->decrementRunningCount();
             did_job = false;
          }
       }
@@ -420,7 +419,7 @@ inline void* threadStart(void* ptr)
          tp->jobs_.pop_front();
 
          if (!did_job)
-            tp->running_count_ ++;
+            tp->incrementRunningCount();
 
          tp->UNLOCK(&tp->lock_);
          // Do the job without holding any locks

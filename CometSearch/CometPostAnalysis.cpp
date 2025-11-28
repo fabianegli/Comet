@@ -120,24 +120,13 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
 }
 
 
-void CometPostAnalysis::CalculateDeltaCn(int iWhichQuery)
-{
-   int iNumPrintLines;
-   int iMinLength;
-
-   Results* pOutput;
-
-   Query* pQuery = g_pvQuery.at(iWhichQuery);
-
-   pOutput = pQuery->_pResults;
-
-   iNumPrintLines = pQuery->iMatchPeptideCount;
+void CometPostAnalysis::CalculateDeltaCnsAndRank(Results* pOutput, int iNumPrintLines) {
 
    // extend 1 past iNumPeptideOutputLines need for deltaCn calculation of last entry
    if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines + 1)
       iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines + 1;
 
-   iMinLength = 999;
+   int iMinLength = 999;
    for (int i = 0; i < iNumPrintLines; ++i)
    {
       int iLen = (int)strlen(pOutput[i].szPeptide);
@@ -226,6 +215,18 @@ void CometPostAnalysis::CalculateDeltaCn(int iWhichQuery)
    }
 }
 
+void CometPostAnalysis::CalculateDeltaCn(int iWhichQuery)
+{
+
+   Query* pQuery = g_pvQuery.at(iWhichQuery);
+
+   // After ProcessResults for targets
+   CalculateDeltaCnsAndRank(pQuery->_pResults, pQuery->iMatchPeptideCount);
+
+   // After ProcessResults for decoys (if any)
+   if (g_staticParams.options.iDecoySearch == 2)
+      CalculateDeltaCnsAndRank(pQuery->_pDecoys, pQuery->iMatchPeptideCount);
+}
 
 void CometPostAnalysis::AnalyzeSP(int iWhichQuery)
 {
@@ -1268,7 +1269,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                         + ", scan " + std::to_string(pQuery->_spectrumInfoInternal.iScanNumber)
                         + ", z " + std::to_string(ctCharge);
 
-                     string strErrorMsg(sErrorMsg.c_str());
+                     std::string strErrorMsg(sErrorMsg.c_str());
                      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                      logerr(sErrorMsg);
                      return false;
